@@ -7,6 +7,7 @@ import subprocess
 import argparse
 
 DEFAULT_VORBIS_QUALITY = 5
+IGNORE_FILES=['.stfolder']
 
 class TinyMusicSync:
 
@@ -16,6 +17,7 @@ class TinyMusicSync:
         self.encoder = encoder
         self.mapping = {}
         self.hardlink = True
+        self.delete = True
         if exceptions is not None:
             self.exceptions = exceptions
         else:
@@ -23,7 +25,7 @@ class TinyMusicSync:
         if test:
             self.file_action = self.file_test_action
             self.delete_action = self.delete_test_action
-            self.dir_action = lambda: None
+            self.dir_action = lambda x: None
         else:
             self.file_action = self.file_real_action
             self.delete_action = self.delete_real_action
@@ -51,21 +53,25 @@ class TinyMusicSync:
         return dirs, list(set(files))
 
     def delete_test_action(self, dirs, files):
+        if not self.delete:
+            return
         files = map(lambda x: os.path.join(self.dst, x), files)
         dirs = map(lambda x: os.path.join(self.dst, x), dirs)
         dirs.reverse()
-        print '\n'.join(map(lambda x: 'deleting {}'.format(x), files))
-        print '\n'.join(map(lambda x: 'deleting {}'.format(x), dirs))
+        print('\n'.join(map(lambda x: 'Will delete\n  {}'.format(x), files)))
+        print('\n'.join(map(lambda x: 'Will delete\n  {}'.format(x), dirs)))
 
     def delete_real_action(self, dirs, files):
+        if not self.delete:
+            return
         files = map(lambda x: os.path.join(self.dst, x), files)
         dirs = map(lambda x: os.path.join(self.dst, x), dirs)
         dirs.reverse()
         for filename in files:
-            print "deleting {}".format(filename)
+            print("Deleting\n  {}".format(filename))
             os.unlink(filename)
         for dirname in dirs:
-            print "deleting {}".format(dirname)
+            print("Deleting\n  {}".format(dirname))
             os.rmdir(dirname)
 
     def file_test_action(self, filename):
@@ -73,36 +79,32 @@ class TinyMusicSync:
         if filename in self.mapping:
             # file should be encoded
             srcfile = os.path.join(self.src, self.mapping[filename])
-            if os.path.exists(dstfile):
-                print("{} already encoded, it seems.".format(dstfile))
-            else:
-                print("{} - encode from {}".format(filename, srcfile))
+            if not os.path.exists(dstfile):
+                print("Will encode\n  {} to\n  {}".format(srcfile, dstfile))
             return
         srcfile = os.path.join(self.src, filename)
         if os.path.exists(dstfile):
             if os.stat(dstfile)[1] == os.stat(srcfile)[1]:
                 return  # everything looks good!
-            print("{} unlinking".format(dstfile))
-        print("{} link to {}".format(dstfile, srcfile))
+            print("Will delete\n  {}".format(dstfile))
+        print("Will link\n  {} to\n  {}".format(dstfile, srcfile))
 
     def file_real_action(self, filename):
         dstfile = os.path.join(self.dst, filename)
         if filename in self.mapping:
             # file should be encoded
             srcfile = os.path.join(self.src, self.mapping[filename])
-            if os.path.exists(dstfile):
-                print("{} already encoded, it seems.".format(dstfile))
-            else:
-                print("encoding {}".format(dstfile))
+            if not os.path.exists(dstfile):
+                print("Encoding\n  {}".format(dstfile))
                 self.encoder(srcfile, dstfile)
             return
         srcfile = os.path.join(self.src, filename)
         if os.path.exists(dstfile):
             if os.stat(dstfile)[1] == os.stat(srcfile)[1]:
                 return  # everything looks good!
-            print("unlinking {}".format(dstfile))
+            print("Deleting\n  {}".format(dstfile))
             os.unlink(dstfile)
-        print("linking {} to {}".format(dstfile, srcfile))
+        print("Linking\n  {} to\n  {}".format(dstfile, srcfile))
         os.link(srcfile, dstfile)
 
     def dir_real_action(self, dirs):
@@ -159,14 +161,24 @@ def main():
                         help='Source directory')
     parser.add_argument('-q', '--quality', action='store', type=int,
                         default=DEFAULT_VORBIS_QUALITY,
-                        help='Vorbis quality (default: {}'.format(
+                        help='Vorbis quality (default: {})'.format(
                             DEFAULT_VORBIS_QUALITY))
+    parser.add_argument('--dry-run', action='store_const',
+                        const=True, default=False,
+                        help='Take no action, only display what '
+                             'actions would be performed')
+    parser.add_argument('--no-delete', action='store_const',
+                        const=True, default=False,
+                        help='Do not delete from the destination, only '
+                             'add and replace.')
     args = parser.parse_args()
-    TinyMusicSync(args.src,
-                  args.dst,
-                  lambda s, d: encode(s, d, args.quality),
-                  ['.stfolder'],
-                  test=False).sync()
+    tms = TinyMusicSync(args.src,
+                        args.dst,
+                        lambda s, d: encode(s, d, args.quality),
+                        IGNORE_FILES,
+                        test=args.dry_run)
+    tms.delete = not args.no_delete
+    tms.sync()
 
 if __name__ == '__main__':
     main()
