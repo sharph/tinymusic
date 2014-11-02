@@ -6,7 +6,7 @@ import subprocess
 
 import argparse
 
-OGG_QUALITY = 5
+DEFAULT_VORBIS_QUALITY = 5
 
 class TinyMusicSync:
 
@@ -128,9 +128,9 @@ class TinyMusicSync:
             self.file_action(filename)
 
 
-def encode(src, dst):
+def encode(src, dst, quality):
     cmd = ['/usr/bin/oggenc',
-           '-q', str(OGG_QUALITY),
+           '-q', str(quality),
            '-o', dst,
            src]
     try:
@@ -148,18 +148,23 @@ def encode(src, dst):
             pass
         print "Encoding failed!"
 
+
 def main():
     parser = argparse.ArgumentParser('Maintain a directory of transcoded '
                                      'music, replacing FLAC files with '
-                                     'OGG Vorbis')
+                                     'Vorbis')
     parser.add_argument('src', metavar='SRC', type=str,
                         help='Source directory')
     parser.add_argument('dst', metavar='DST', type=str,
                         help='Source directory')
+    parser.add_argument('-q', '--quality', action='store', type=int,
+                        default=DEFAULT_VORBIS_QUALITY,
+                        help='Vorbis quality (default: {}'.format(
+                            DEFAULT_VORBIS_QUALITY))
     args = parser.parse_args()
     TinyMusicSync(args.src,
                   args.dst,
-                  encode,
+                  lambda s, d: encode(s, d, args.quality),
                   ['.stfolder'],
                   test=False).sync()
 
