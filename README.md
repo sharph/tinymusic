@@ -12,7 +12,7 @@ usage: Maintain a directory of transcoded music, replacing FLAC files with Vorbi
 
 positional arguments:
   SRC                   Source directory
-  DST                   Source directory
+  DST                   Destination directory
 
 optional arguments:
   -h, --help            show this help message and exit

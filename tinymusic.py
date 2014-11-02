@@ -158,7 +158,7 @@ def main():
     parser.add_argument('src', metavar='SRC', type=str,
                         help='Source directory')
     parser.add_argument('dst', metavar='DST', type=str,
-                        help='Source directory')
+                        help='Destination directory')
     parser.add_argument('-q', '--quality', action='store', type=int,
                         default=DEFAULT_VORBIS_QUALITY,
                         help='Vorbis quality (default: {})'.format(
